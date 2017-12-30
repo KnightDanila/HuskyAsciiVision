@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+<!-- 26.03.2017
+Игорь 20:30
+А моноширинным шрифтом в консоле лучше выходит?
+Или там высота символа тоже больше ширины?
+ Данила
+Данила 20:32
+Вроде, тоже :D Хотя.... нужно попробовать :D Или ещё можно создать свой шрифт :D О, ДАААА, ЭТО МНЕ НРАВИТЬСЯ :D
+Так, пойду запишу пока не забыл :D
+Игорь 20:34
+Можно просто учитывать как-то размер символов когда формируешь.. О. Можно просто сжимать изначальное изображение по вертикали на такой же коэффициент, на который оно увеличивается при рендере символами
+Какая-нибудь функция для этого должна быть
+В конце-концов так даже Paint умеет
+-->
+<!--
+INFO
+https://idevelop.ro/
+-->
+
+
+
+<html>
+    <head>
+        <title>HuskyAsciiVision</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+
+        <!-- jQuery -->
+        <script src="js/libs/jquery/jquery.js"></script>
+        <!-- BootStrap -->
+        <link rel="stylesheet" href="js/libs/twitter-bootstrap/css/bootstrap.css">
+        <link rel="stylesheet" href="js/libs/twitter-bootstrap/css/bootstrap-theme.css">
+        <script src="js/libs/twitter-bootstrap/js/bootstrap.js"></script>
+        <!-- jQuery UI -->
+        <link rel="stylesheet" href="js/libs/jqueryui/jquery-ui.css">
+        <script src="js/libs/jqueryui/jquery-ui.js"></script> 
+        <script src="js/libs/textillate/jquery.textillate.js"></script>
+        <script src="js/libs/textillate/jquery.textillate.min.js"></script> 
+        <!-- HIGH CHARTS-->
+        <script src="js/libs/highcharts/highcharts.js"></script> 
+
+        <!-- My Style and JS -->
+        <link rel="stylesheet" href="style.css">
+        <script src="functions.js"></script>
+
+    </head>
+    <body>
+        <script>
+            imgWidth = 0;
+            imgHeight = 0;
+            var img = new Image();
+            img.onload = function () {
+                imgWidth = this.width;
+                imgHeight = this.height;
+                alert(this.width + 'x' + this.height);
+            };
+            img.src = srcTexture; //'http://www.google.com/intl/en_ALL/images/logo.gif';
+            function reloadImg() {
+                img.src = srcTexture;
+                img.onload = function () {
+                    imgWidth = this.width;
+                    imgHeight = this.height;
+                    alert(this.width + 'x' + this.height);
+                };
+            }
+        </script>
+
+        <div class="ui-widget-content" style="border:0 0 auto 0;">
+
+            <p class="ui-state-default ui-corner-all ui-helper-clearfix" style="padding:4px;">
+                <span class="ui-icon ui-icon-pencil" style="float:left; margin:-2px 5px 0 0;"></span>
+                <input type="checkbox" id="checkStart" name="radio"><label for="checkStart">Считать</label>
+                <input type="text" class="form-control" id="pixelSize">
+            </p>
+
+
+            <input type="checkbox" id="checkGrayscale" name="radio"><label for="checkGrayscale">Полутоновое</label>
+            <input type="checkbox" id="checkGrayscaleMax" name="radio"><label for="checkGrayscaleMax">Полутоновое через максимум</label>
+            <input type="checkbox" id="buttonLoad" name="radio"><label for="buttonLoad">Другая Картинка</label>
+
+            <div STYLE="" class="ui-corner-all"></div>
+
+        </div>
+
+        <table cellspacing="5" cellpadding="10" width="100%">
+            <tr>
+                <td><center><canvas id="origImgCanvas" width="10" height="10"></canvas></center></td>
+        <td><center><canvas id="asciiCanvas" width="10" height="10"></canvas></center></td>
+</tr>
+</table>    
+
+<script>
+    var fps = 15;
+    var outCanvas = document.getElementById('asciiCanvas');
+    var outContext = outCanvas.getContext('2d');
+    outContext.drawImage(img, 0, 0);
+    var outImageData = outContext.getImageData(0, 0, 10, 10);
+    var pixelSize = ("#pixelSize").toString();
+    window.onload = function () {
+        function drawImage(imageObj) {
+            var canvas = document.getElementById('origImgCanvas');
+            var context = canvas.getContext('2d');
+            var x = 0;
+            var y = 0;
+            context.drawImage(imageObj, x, y);
+
+            var imageData = context.getImageData(x, y, imageObj.width, imageObj.height);
+            var data = imageData.data;
+
+
+            if (GRAYSCALE) {
+                for (var i = 0; i < data.length; i += 4) {
+                    // red
+                    temp = Math.round((data[i] + data[i + 1] + data[i + 2]) / 3);
+                    data[i] = temp;
+                    // green
+                    data[i + 1] = temp;
+                    // blue
+                    data[i + 2] = temp;
+                }
+            }
+
+            function max3v(v1, v2, v3) {
+                if (v1 >= v2 && v1 >= v3) {
+                    return v1;
+                }
+                if (v2 >= v1 && v2 >= v3) {
+                    return v2;
+                }
+                if (v3 >= v1 && v3 >= v2) {
+                    return v3;
+                }
+                //return (v1+v2+v3)/3;
+            }
+
+            function pixelrize(inData, pixelSize, width, height) {   // RGB
+                var r, g, b;
+                for (var i = 0; i < width; i += pixelSize)
+                    for (var j = 0; j < height; j += pixelSize) {
+                        r = 0;
+                        g = 0;
+                        b = 0;
+                        for (var k = 0; k < pixelSize; k++) {
+                            for (var z = 0; z < pixelSize; z++) {
+                                z3 = z * 4;
+                                i3 = i * 4;
+                                kWidth = 4 * k * width;
+                                jWidth = 4 * j * width;
+                                if (i + pixelSize < width) {
+                                    r += inData[0 + i3 + z3 + kWidth + jWidth];
+                                    g += inData[1 + i3 + z3 + kWidth + jWidth];
+                                    b += inData[2 + i3 + z3 + kWidth + jWidth];
+                                } else {
+                                    if (i + z < width) {
+                                        r += inData[0 + i3 + z3 + kWidth + jWidth];
+                                        g += inData[1 + i3 + z3 + kWidth + jWidth];
+                                        b += inData[2 + i3 + z3 + kWidth + jWidth];
+                                    } else {
+                                        r += inData[0 + i3 - z3 + kWidth + jWidth];
+                                        g += inData[1 + i3 - z3 + kWidth + jWidth];
+                                        b += inData[2 + i3 - z3 + kWidth + jWidth];
+                                    }
+                                }
+
+                            }
+                        }
+                        for (var k = 0; k < pixelSize; k++) {
+                            for (var z = 0; z < pixelSize; z++) {
+                                z3 = z * 4;
+                                i3 = i * 4;
+                                kWidth = 4 * k * width;
+                                jWidth = 4 * j * width;
+
+                                if (i + pixelSize < width) {
+                                    inData[0 + i3 + z3 + kWidth + jWidth] = r / (pixelSize * pixelSize);
+                                    inData[1 + i3 + z3 + kWidth + jWidth] = g / (pixelSize * pixelSize);
+                                    inData[2 + i3 + z3 + kWidth + jWidth] = b / (pixelSize * pixelSize);
+                                } else {
+                                    if (i + z < width) {
+                                        inData[0 + i3 + z3 + kWidth + jWidth] = r / (pixelSize * pixelSize);
+                                        inData[1 + i3 + z3 + kWidth + jWidth] = g / (pixelSize * pixelSize);
+                                        inData[2 + i3 + z3 + kWidth + jWidth] = b / (pixelSize * pixelSize);
+                                    } else {
+                                    }
+                                }
+                            }
+                        }
+                        /*
+                         *      *---------------> i
+                         *      | ***
+                         *      | ***
+                         *      | ***
+                         *      |
+                         *      |
+                         *      v
+                         *      j
+                         */
+                    }
+            }
+            function pixelString(inData, pixelSize, width, height) {   // RGB
+                var ABC = "█▓▒░";//256
+                //var ABC = "❋❉❆✦✷✴✧_";//256
+
+                //var ABC = "@80GCLft1i;:,.";//256
+                "────────✷▄▄█▄▄✷──────────\
+─────────✷▄▄███▄▄✷─────────\
+────────✷▄▄█████▄▄✷────────\
+───▒█▒─✷▄▄███████▄▄✷─▓█▓───\
+───▒█▒──────▓▓▓─────░░▒░░─"
+                //✷
+                //✧
+                //" .,:;i1tfLCG08@"
+                //var ABC = "&$@#WBXOxbo^\*_:.";//256
+                var colors = ABC.length;
+                var str = "";
+                var m;
+                for (var i = 0; i < height; i += pixelSize) {
+                    for (var j = 0; j < width; j += pixelSize) {
+                        m = max3v(
+                                inData[0 + j * 4 + i * 4 * width],
+                                inData[1 + j * 4 + i * 4 * width],
+                                inData[2 + j * 4 + i * 4 * width]
+                                );
+
+                        str += ABC[parseInt(m / (256 / colors))];
+                    }
+                    str += "<br>";
+                }
+                return str;
+            }
+            if (START) {
+                pixelSize = parseInt($("#pixelSize")[0].value);
+                outContext.drawImage(imageObj, x, y);
+                outImageData = outContext.getImageData(x, y, imageObj.width, imageObj.height);
+                var outData = outImageData.data;
+                pixelrize(outData, pixelSize, imageObj.width, imageObj.height);
+                $("#checkStart")[0].checked = false;
+                START = false;
+
+                var str = "";
+                for (var i = 9500; i < 9800; i++) {
+                    str += String.fromCharCode(i);
+                }
+                document.getElementById("asciiOut").innerHTML = pixelString(outData, pixelSize, imageObj.width, imageObj.height);
+            }
+            if (GRAYSCALE_MAX) {
+                for (var i = 0; i < data.length; i += 4) {
+                    // red
+                    temp = max3v(data[i], data[i + 1], data[i + 2]);
+                    data[i] = temp;
+                    // green
+                    data[i + 1] = temp;
+                    // blue
+                    data[i + 2] = temp;
+                }
+            }
+
+            // overwrite original image
+
+            context.putImageData(imageData, x, y);
+            outContext.putImageData(outImageData, x, y);
+            //NORM = false;
+        }
+
+        setInterval(function () {
+            /*
+             $("#origImgCanvas")[0].width = imgWidth;
+             $("#origImgCanvas")[0].height = imgHeight;
+             */
+            var theImg = document.getElementById('origImgCanvas');
+            theImg.width = imgWidth;
+            theImg.height = imgHeight;
+
+            var theImg = document.getElementById('asciiCanvas');
+            theImg.width = imgWidth;
+            theImg.height = imgHeight;
+
+            drawImage(img);
+        }, 1000 / fps);
+    };
+
+
+//class = "jtextfill"
+</script>
+<div id = "asciiOut" style = "width:100px;height:50px;margin:0px;padding:0px;">
+    My Text Here salfsad';adsk'sdkl;'ad
+    fasdfasdfasdfasddfasdfasdfsadfasdfasdf
+    asdf'asdf;sdfasdkf;asdf'asdflsk;akdddddddddddddddddddddddddddddddddddddddddddddddd
+    d
+    ddsdfs'ldfadfladsfasdf
+    dfls'df;lsd'fsa
+    dfasdf
+    adfad
+    sfas
+    dfsdfskd
+    ;fk
+    sdf
+    sdkf
+    sdakf;lasdkfsadlfk
+    asdf
+    adfassd
+    fla
+    dflsad
+    fsd
+    fkasdkfsdl
+</div>
+
+</body>
+</html>
